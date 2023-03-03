@@ -4,8 +4,19 @@ import utime    #import des fonction lier au temps
 import ujson    #import des fonction lier aà la convertion en Json
 import ssd1306
 from machine import Pin, PWM, freq, I2C
-import framebuf
+import machine
+import scanplayer
+from picodfplayer import DFPlayer
+from utime import sleep_ms, sleep
+# import framebuf
 
+#Constants. Change these if DFPlayer is connected to other pins.
+UART_INSTANCE=0
+TX_PIN = 16
+RX_PIN=17
+BUSY_PIN=2
+
+player=DFPlayer(UART_INSTANCE, TX_PIN, RX_PIN, BUSY_PIN)
 
 
 # Configuration de la LED RGB
@@ -16,8 +27,10 @@ ledB = PWM(Pin(20, mode=Pin.OUT))
 # Configuration de l'écran OLED
 i2c = I2C(0, sda=Pin(8), scl=Pin(9))
 oled = ssd1306.SSD1306_I2C(128, 64, i2c)
-oled.text("heyyy", 0,0)
+oled.text("Bienvenue !", 0,0)
 oled.show()
+utime.sleep(2)
+
 
 
 # Dictionnaire des couleurs
@@ -52,8 +65,18 @@ wlan.connect(ssid, password) # connecte la raspi au réseau
 
 while not wlan.isconnected():
     print("att")
+    oled.fill(0)
+    # Affichage du nom du Pokémon en blanc
+    oled.text("Patientez...", 0, 0, 1)
+    # Mise à jour de l'écran
+    oled.show()
     utime.sleep(1)
-
+    
+oled.fill(0)
+# Affichage du nom du Pokémon en blanc
+oled.text("Pokemon ?", 0, 0, 1)
+# Mise à jour 
+oled.show()
 
 # Fonction pour afficher le nom du Pokémon sur l'écran OLED
 def display_pokemon_name(name):
@@ -74,7 +97,7 @@ def display_pokemon_sprite(sprite_data):
                 oled.pixel(j, i, 1)
     # Mise à jour de l'écran
     oled.show()
-
+    
 
 try:
     pokemon_name = input("choisis ton pokemon : ") # input("Entrez le nom d'un Pokémon : ")
@@ -95,8 +118,67 @@ try:
         ledR.duty_u16(color[0] * 256)  # Rouge
         ledG.duty_u16(color[1] * 256)  # Vert
         ledB.duty_u16(color[2] * 256)  # Bleu
+        # sprite : print(response.json()["sprites"]["regular"])
+        # id :
+        # sound : https://pokemoncries.com/cries/pokemonId.mp3
+        print(response.json()["pokedexId"])
+        id = response.json()["pokedexId"]
         
-        display_pokemon_sprite(response.json()["sprites"]["regular"])
+        player.setVolume(15)
+        player.playTrack(1,id)
+        print(id)
+        if id <= 250:
+            player.playTrack(1,id)
+        if id > 250 and id <= 500:
+            id = id-250
+            player.playTrack(2,id)
+        if id > 500 and id <= 750:
+            id = id-500
+            player.playTrack(3,id)
+        if id > 750 and id <= 1000:
+            id = id-750
+            player.playTrack(4,id)
+        sleep(5)
+        
+        # uart = machine.UART(0, baudrate=9600, bits=8, parity=None, stop=1, tx=Pin(16), rx=Pin(17))
+        # Envoi de la commande de configuration
+        # uart.write(bytearray([0x7E, 0xFF, 0x06, 0x0F, 0x00, 0x00, 0x01, 0xFE, 0xEF]))
+        
+        # Attendre que le module soit prêt
+        # while uart.any() == 0:
+        #     utime.sleep_ms(1)
+
+        # response = uart.read(10)
+        
+        # if response == bytearray(b'\x7e\xff\x06\x0f\x00\x01\x01\xfe\xee\xef'):
+        #    print("Module MP3-TF-16P V3.0 prêt")
+            
+        # Envoi de la commande pour initialiser la carte SD
+        # uart.write(bytearray([0x7E, 0xFF, 0x06, 0x09, 0x00, 0x00, 0x00, 0xFE, 0xEF]))
+        
+        # Attendre que la carte SD soit initialisée
+        # while uart.any() == 0:
+        #     utime.sleep_ms(1)
+
+        # response = uart.read(10)
+        
+        # if response == bytearray(b'\x7e\xff\x06\x09\x00\x01\x01\xfe\xec\xef'):
+        #     print("Carte SD initialisée")
+            
+        # Envoi de la commande pour jouer le fichier audio
+        # file_id = 1 # Remplacer 1 par l'ID du fichier audio que vous souhaitez lire
+
+        # uart.write(bytearray([0x7E, 0xFF, 0x06, 0x0F, 0x00, 0x00, file_id, 0xFE, 0xEF]))
+        
+        # Attendre que le module commence à jouer le fichier audio
+        # while uart.any() == 0:
+        #     utime.sleep_ms(1)
+            
+        # response = uart.read(10)
+
+        # if response == bytearray(b'\x7e\xff\x06\x0f\x00\x01\x01\xfe\xee\xef'):
+        #     print("Lecture du fichier audio commencée")
+
                 
         response.close() # ferme la demande    
         utime.sleep(1)
